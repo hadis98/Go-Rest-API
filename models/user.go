@@ -38,13 +38,13 @@ func (u *User) Save() error {
 	return err
 }
 
-func (user User) ValidateCredentials() error {
-	query := "SELECT password FROM users WHERE email = ?"
+func (user *User) ValidateCredentials() error {
+	query := "SELECT id, password FROM users WHERE email = ?"
 	// in our database creation, we said that the emial column must be unique
 	// so an email cannot exists more than once
 	row := db.DB.QueryRow(query, user.Email)
 	var retrievedPassword string
-	err := row.Scan(&retrievedPassword) //the password that we found in our database for the entered email
+	err := row.Scan(&user.ID, &retrievedPassword) //the password that we found in our database for the entered email
 	// Scan will return an error if it can't find any matched query
 	if err != nil {
 		// !we did not find a user for that email
@@ -52,8 +52,28 @@ func (user User) ValidateCredentials() error {
 	}
 	// compare the password to the password that user has submitted with request
 	passwordIsValid := utils.CheckPasswordHash(user.Password, retrievedPassword)
-	if passwordIsValid {
+	if !passwordIsValid {
 		return errors.New("credentials invalid")
 	}
 	return nil
+}
+
+func GetAllUsers() ([]User, error) {
+	query := "SELECT * FROM users"
+	rows, err := db.DB.Query(query)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+	var users []User
+	for rows.Next() {
+		var user User
+		err := rows.Scan(&user.ID, &user.Email, &user.Password)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+	return users, nil
 }

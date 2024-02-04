@@ -13,12 +13,13 @@ type Event struct {
 	Description string    `binding:"required"`
 	Location    string    `binding:"required"`
 	DateTime    time.Time `binding:"required"`
-	UserID      int
+	UserID      int64
 }
 
 // var events []Event = []Event{}
 
 func (e *Event) Save() error {
+	fmt.Println("[event save: ]", e.ID, e.UserID)
 	//later add to database
 	query := `
 	INSERT INTO events (name,description,location,dateTime,user_id) 
@@ -47,8 +48,6 @@ func GetAllEvents() ([]Event, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	fmt.Println("****************************")
-	fmt.Println("rows: ", rows)
 	var events []Event
 	for rows.Next() { //loop till we have a row to read
 		var event Event
@@ -57,9 +56,6 @@ func GetAllEvents() ([]Event, error) {
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println("****************************")
-		fmt.Println("event is : ", event)
-
 		events = append(events, event)
 	}
 
@@ -107,4 +103,33 @@ func (event Event) Delete() error {
 	_, err = stmt.Exec(event.ID)
 	return err
 
+}
+
+func (e Event) Register(userId int64) error {
+	query := "INSERT INTO registration(event_id,user_id) VALUES(?,?)"
+	stmt, err := db.DB.Prepare(query)
+
+	if err != nil {
+		return err
+	}
+
+	defer stmt.Close()
+	_, err = stmt.Exec(e.ID, userId)
+	return err
+
+}
+
+func (e Event) CancelRegistration(userId int64) error {
+
+	query := "DELETE FROM registration WHERE event_id = ? AND user_id = ?"
+	stmt, err := db.DB.Prepare(query)
+	fmt.Println("[CancelRegistration]: ", stmt, "   ", err)
+	if err != nil {
+		return err
+	}
+
+	defer stmt.Close()
+	result, err := stmt.Exec(e.ID, userId)
+	fmt.Println("Result: ", result)
+	return err
 }
